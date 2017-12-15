@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="localhost" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="mainflow" processingStrategy="synchronous">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/testlist" doc:name="HTTP"/>
+        <logger message="received request" level="INFO" doc:name="received request"/>
+        <set-variable variableName="numbers" value="#[new java.util.ArrayList()]" doc:name="listOfnumbers"/>
+        <set-variable variableName="start" value="#[Integer.parseInt(message.inboundProperties.'http.query.params'.start)]" doc:name="start"/>
+        <set-variable variableName="end" value="#[Integer.parseInt(message.inboundProperties.'http.query.params'.end)]" doc:name="end"/>
+        <flow-ref name="getdetails_Flow" doc:name="getdetails_Flow"/>
+        <flow-ref name="setFinalJson_Flow" doc:name="setFinalJson_Flow"/>
+    </flow>
+    <sub-flow name="setFinalJson_Flow">
+        <set-payload value="#[flowVars.numbers]" doc:name="Set final Payload"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+    </sub-flow>
+    <flow name="getdetails_Flow" processingStrategy="synchronous">
+        <logger message="request in getDetails flow" level="INFO" doc:name="Log info"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.start &lt;= flowVars.end]">
+                <logger message="will continue.." level="INFO" doc:name="Log info"/>
+                <flow-ref name="setCode_Flow" doc:name="setCode_Flow"/>
+                <flow-ref name="getdetails_Flow" doc:name="getdetails_Flow"/>
+            </when>
+            <otherwise>
+                <logger message="will not continue..." level="INFO" doc:name="Log info"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <sub-flow name="setCode_Flow">
+        <logger message="in set Code flow" level="INFO" doc:name="Log info"/>
+        <expression-component doc:name="Expression"><![CDATA[if(flowVars.start%7==0 && flowVars.start%3==0){
+flowVars.numbers.add('MS3 and ME');
+}
+else if(flowVars.start%3==0){
+flowVars.numbers.add('ME');
+}
+else if(flowVars.start%7==0){
+flowVars.numbers.add('MS3');
+}
+
+flowVars.start =flowVars.start + 1;]]></expression-component>
+    </sub-flow>
+    
+</mule>
